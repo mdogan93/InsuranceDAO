@@ -2,12 +2,16 @@ pragma solidity ^0.4.10;
 
 contract InsuranceVO{
     //Mapping for hospial address to proposal id.
-    mapping(address=>uint) hospitals;
+    mapping(address=>uint) proposals;
     //Mapping for customer address to reimbursement value.
     mapping(address=>uint) reimbursements;
+    mapping(address=>Hospital) hospitals;
     uint public deposit;
     uint public premium;
     uint public numberOfProposal;
+    var public votePercentLimit;
+    var public votePercentAccept;
+    uint customerCount;
     /*
     Structure for customer. It holds premium duration, validity, total votes and eligibility 
     for voting.
@@ -29,6 +33,7 @@ contract InsuranceVO{
     uint voteCount;
     uint proposalID;
     uint amountOfService;
+    uint durationOfService;
     uint voteEnd;
     uint evetler;
    }
@@ -39,6 +44,9 @@ contract InsuranceVO{
     deposit=5 ether;
     premium=50 ether;
     numberOfProposal=0;
+    votePercentAccept = 0.65;
+   	votePercentLimit = 0.35;
+   	customerCount=0;
   }
    // Pays premium values.
    function payPremium() public payable{
@@ -57,6 +65,7 @@ contract InsuranceVO{
     }else{
       //Creates a new candidate customer for insurance.
       customers[msg.sender]=Customer({endPremium:now+365 days,isValid:true,weight:1});
+      customerCount++;
       reimbursements[msg.sender]=msg.value-premium;
     }
 
@@ -87,10 +96,16 @@ contract InsuranceVO{
     @param: description of proposal.
     @param: duration of insurance service offered by hospital.
   */
-  function propose(bytes32 description,uint amountService)public{
-    hospitals[msg.sender]=numberOfProposal;
-    proposals.push(Proposal({evetler:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
+  function propose(bytes32 description,uint amountService,uint serviceDuration)public{
+    proposals[msg.sender]=numberOfProposal;
+    proposals.push(Proposal({durationOfService:serviceDuration, evetler:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
     numberOfProposal++;
+    //Deposit should be implemented
+  }
+
+  function startServe() public{
+  	//Buraya da hastane invoke atacak, eğer votingperiod bitmişse proposal için
+  	//Yeni hospital olştur adresle maple vs.
   }
 
 
