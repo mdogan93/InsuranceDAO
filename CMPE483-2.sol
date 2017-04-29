@@ -1,21 +1,24 @@
 pragma solidity ^0.4.10;
 
 contract InsuranceVO{
-    
+    //Mapping for hospial address to proposal id.
     mapping(address=>uint) hospitals;
+    //Mapping for customer address to reimbursement value.
     mapping(address=>uint) reimbursements;
-    
-   
-
     uint public deposit;
     uint public premium;
+    uint public numberOfProposal;
+    /*
+    Structure for customer. It holds premium duration, validity, total votes and eligibility 
+    for voting.
+    */
    struct Customer{
     uint endPremium;
     mapping(uint=>bool) hospitalVotes;
     uint weight;
     bool isValid;
    }
-   
+   //Holds all customers.
    mapping(address=>Customer) customers;
    struct Hospital{
     address hospitalAddr;
@@ -26,14 +29,16 @@ contract InsuranceVO{
     uint voteCount;
     uint proposalID;
     uint amountOfService;
+    uint voteEnd;
+    uint evetler;
    }
-   
+   //Proposal array.
   Proposal[] public proposals;
-
+//Constructor of contract.
   function InsuranceVO(){
     deposit=5 ether;
     premium=50 ether;
-
+    numberOfProposal=0;
   }
    // Pays premium values.
    function payPremium() public payable{
@@ -57,7 +62,7 @@ contract InsuranceVO{
 
 
   }
-//Reimburses balances. If premium paid more, Customer invokes this method to get his money back.
+//Reimburses a customer. If premium paid more, Customer invokes this method to get his money back.
   function reimburseMe() public {
     uint amnt;
     amnt=reimbursements[msg.sender];
@@ -68,11 +73,26 @@ contract InsuranceVO{
       }
     }
   }
+
+  //Repays the customer if paid more.
+  /*
+  @return: reimbursed amount of customer.
+  */
   function reimburseBalance() constant public returns(uint retval){
     return (reimbursements[msg.sender]);
 
-
   }
+  /*
+    Offer function for hospitals. 
+    @param: description of proposal.
+    @param: duration of insurance service offered by hospital.
+  */
+  function propose(bytes32 description,uint amountService)public{
+    hospitals[msg.sender]=numberOfProposal;
+    proposals.push(Proposal({evetler:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
+    numberOfProposal++;
+  }
+
 
 
 
