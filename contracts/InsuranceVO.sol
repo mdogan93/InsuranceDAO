@@ -1,16 +1,16 @@
-pragma solidity ^0.4.10;
+pragma solidity ^0.4.8;
 
 contract InsuranceVO{
     //Mapping for hospial address to proposal id.
-    mapping(address=>uint) proposals;
+    mapping(address=>uint) proposal;
     //Mapping for customer address to reimbursement value.
     mapping(address=>uint) reimbursements;
-    mapping(address=>Hospital) hospitals;
+ 
     uint public deposit;
     uint public premium;
     uint public numberOfProposal;
-    var public votePercentLimit;
-    var public votePercentAccept;
+    uint public votePercentLimit;
+    uint public votePercentAccept;
     uint customerCount;
     /*
     Structure for customer. It holds premium duration, validity, total votes and eligibility 
@@ -23,11 +23,13 @@ contract InsuranceVO{
     bool isValid;
    }
    //Holds all customers.
-   mapping(address=>Customer) customers;
+   
    struct Hospital{
     address hospitalAddr;
 
    }
+   mapping(address=>Customer) customers;
+   mapping(address=>Hospital) hospitals;
    struct Proposal{
     bytes32 link;
     uint voteCount;
@@ -44,9 +46,9 @@ contract InsuranceVO{
     deposit=5 ether;
     premium=50 ether;
     numberOfProposal=0;
-    votePercentAccept = 0.65;
-   	votePercentLimit = 0.35;
-   	customerCount=0;
+    votePercentAccept =65;
+    votePercentLimit = 35;
+    customerCount=0;
   }
    // Pays premium values.
    function payPremium() public payable{
@@ -97,15 +99,15 @@ contract InsuranceVO{
     @param: duration of insurance service offered by hospital.
   */
   function propose(bytes32 description,uint amountService,uint serviceDuration)public{
-    proposals[msg.sender]=numberOfProposal;
+    proposal[msg.sender]=numberOfProposal;
     proposals.push(Proposal({durationOfService:serviceDuration, evetler:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
     numberOfProposal++;
     //Deposit should be implemented
   }
 
   function startServe() public{
-  	//Buraya da hastane invoke atacak, eğer votingperiod bitmişse proposal için
-  	//Yeni hospital olştur adresle maple vs.
+    //Buraya da hastane invoke atacak, eğer votingperiod bitmisse proposal icin
+    //Yeni hospital olstur adresle maple vs.
   }
 
 
