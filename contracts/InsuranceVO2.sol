@@ -136,4 +136,25 @@ function requestServe() public{
   mapHospitals[hospitalAdress]=Customer({endPeriod:(now+p.durationOfService),amountOfService: p.amountService,proposalLink:p.link});
 }
 */
+
+
+//Bu kısımda düzeltilmesi gerekenler:
+//1.Msg gönderenin customer olup olmadığına bakılmalı. customer değilse başta throw
+//2.Customerın bu proposal için oy kullandığı tutulmalı ya proposalın içinde ya customerın içinde
+//Bence proposal içinde tutmak daha mantıklı çünkü sonsuza kadar tutulması gereken bir şey değil proposal silinince gitsin :D
+//Selametle
+function customerVote(uint proposalID, bool choice) public{
+if(proposals.voteEnd<now){
+throw;
+}
+proposals[proposalId].voteCount++;
+if(bool){
+proposals[proposalId].yesVotes++;
+}
+
+}
+
+
+
+
 }
