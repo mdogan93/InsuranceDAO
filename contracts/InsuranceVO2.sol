@@ -9,6 +9,7 @@ mapping(address=>uint) mapReimbursements;
 mapping(address=>Hospital) mapHospitals;
 //Default value of the deposit that the hospital gives.
 mapping(address=>Customer) mapCustomers;
+
 uint public deposit;
 //Default valuo of the premium price in Ethers.
 uint public premium;
@@ -17,7 +18,7 @@ uint public numberOfProposal;
 uint public customerThreshold;
 uint public votePercentLimit;
 uint public votePercentAccept;
-uint customerCount;
+uint public customerCount;
 /*
 Structure for customer. It holds premium duration, validity, total votes and eligibility
 for voting.
@@ -38,6 +39,7 @@ struct Hospital{
   bytes32[] invoices;
   bytes32[] proposalLink;
 }
+
 struct Proposal{
   bytes32[] link;
   uint voteCount;
@@ -52,19 +54,28 @@ Proposal[] public arrProposals;
 //Constructor of contract.
 function InsuranceVO(){
   deposit=5 ether;
-  premium=50 ether;
+  premium=10 ether;
   numberOfProposal=0;
   votePercentAccept = 65;
   votePercentLimit = 35;
   customerThreshold=1000;
   customerCount=0;
 }
+
+function checkThreshold(){
+  if(customerCount>=1000){
+  votePercentLimit=25;
+  }
+}
+
 // Pays premium values.
 function payPremium() public payable{
+
 if(msg.value<premium){
   throw;
 }
 //Checks if not customer.
+
 if((mapCustomers[msg.sender]).isValid){
   if((mapCustomers[msg.sender]).endPremium>now){
     throw;
@@ -74,11 +85,14 @@ if((mapCustomers[msg.sender]).isValid){
     mapReimbursements[msg.sender]=msg.value-premium;
     }
 }else{
+
 //Creates a new candidate customer for insurance.
   mapCustomers[msg.sender]=Customer({endPremium:now+365 days,isValid:true,weight:1});
   customerCount++;
   mapReimbursements[msg.sender]=msg.value-premium;
+
   }
+  checkThreshold();
 
 }
 //Reimburses a customer. If premium paid more, Customer invokes this method to get his money back.
@@ -112,7 +126,7 @@ function propose(bytes32[] description,uint amountService,uint serviceDuration)p
 }
   mapReimbursements[msg.sender] += deposit;
   mapProposals[msg.sender]=numberOfProposal;
-  arrProposals.push(Proposal({durationOfService:serviceDuration, yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
+  arrProposals.push(Proposal({durationOfService:serviceDuration, yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 45 days}));
   numberOfProposal++;
 //Deposit should be implemented
 }
@@ -144,17 +158,53 @@ function requestServe() public{
 //Bence proposal içinde tutmak daha mantıklı çünkü sonsuza kadar tutulması gereken bir şey değil proposal silinince gitsin :D
 //Selametle
 function customerVote(uint proposalID, bool choice) public{
-if(proposals.voteEnd<now){
-throw;
-}
-proposals[proposalId].voteCount++;
-if(bool){
-proposals[proposalId].yesVotes++;
-}
+  if(checkRequirements(proposalID)){
+    throw;
+  }
+  Customer c=mapCustomers[msg.sender];
+  if(c.weight==0){
+    throw;
+  }
+  if((arrProposals[proposalID]).voteEnd<now){
+    throw;
+  }
+  if(c.mapHospitalVotes[proposalID]){
+    throw;
+  }
+  arrProposals[proposalID].voteCount+=c.weight;
+  if(choice){
+    arrProposals[proposalID].yesVotes+=c.weight;
+    c.mapHospitalVotes[proposalID]=true;
+  }
 
 }
 
+function checkRequirements(uint proposalID) returns(bool){
+  return arrProposals[proposalID].voteEnd<now;
+}
 
+/*
+Transfers votes;
+*/
+function transferVote(address to)public{
+  Customer c=mapCustomers[msg.sender];
+  if(c.weight==0){
+    throw;
+  }
+
+  if(!mapCustomers[to].isValid){
+    throw;
+  }
+  Customer c1=mapCustomers[to];
+  mapCustomers[to].weight+=1;
+  mapCustomers[msg.sender].weight-=1;
+}
+function showVotes()public returns(uint){
+  if(!mapCustomers[msg.sender].isValid){
+    return 31;
+  }
+  return mapCustomers[msg.sender].weight;
+}
 
 
 }
