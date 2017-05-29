@@ -19,10 +19,12 @@ uint public customerThreshold;
 uint public votePercentLimit;
 uint public votePercentAccept;
 uint public customerCount;
-uint public systemStart;
 bool public isActive;
 uint public hospitalCount;
 uint public treatmentCount;
+uint public fundingPeriod;
+uint public requiredHospital;
+uint public requiredCustomer;
 /*
 Structure for customer. It holds premium duration, validity, total votes and eligibility
 for voting.
@@ -58,22 +60,26 @@ struct Proposal{
   uint amountOfService;
   uint voteEnd;
   uint yesVotes;
+  bool isValid;
 }
 //Proposal array.
 Proposal[] public arrProposals;
 //Constructor of contract.
 function InsuranceVO(){
   deposit=5 ether;
-  premium=10 ether;
+  premium=20 ether;
   numberOfProposal=0;
   votePercentAccept = 65;
   votePercentLimit = 35;
   customerThreshold=1000;
   customerCount=0;
-  systemStart=now+10 days;// Editlenecek.
   isActive=false;
   hospitalCount=0;
   treatmentCount=0;
+  fundingPeriod=now+30 days;
+  requiredCustomer=10;
+  requiredHospital=2;
+
 }
 
 function checkThreshold(){
@@ -81,15 +87,7 @@ function checkThreshold(){
   votePercentLimit=25;
   }
 }
-function (){
-  if(!isActive){
-    if(hospitalCount>=1 && customerCount>=2){
-      isActive=true;
 
-    }
-  }
-
-}
 // Pays premium values.
 function payPremium() public payable{
 
@@ -107,14 +105,20 @@ if((mapCustomers[msg.sender]).isValid){
     mapReimbursements[msg.sender]=msg.value-premium;
     }
 }else{
-  if(systemStart>now){
-    mapCustomers[msg.sender]=Customer({endPremium:systemStart+365 days,isValid:true,weight:1});
+  if(fundingPeriod>now){
+    mapCustomers[msg.sender]=Customer({endPremium:fundingPeriod+365 days,isValid:true,weight:1});
   }else{
     mapCustomers[msg.sender]=Customer({endPremium:now+365 days,isValid:true,weight:1});
 }
   customerCount++;
   mapReimbursements[msg.sender]=msg.value-premium;
 
+  }
+  if(!isActive && now<fundingPeriod){
+    if(hospitalCount>=requiredHospital && customerCount>=requiredCustomer){
+      isActive=true;
+
+    }
   }
   checkThreshold();
 
@@ -135,7 +139,7 @@ function reimbursePremium() public{
   if(!mapCustomers[msg.sender].isValid){
     throw;
   }
-  if(!isActive && now>systemStart){
+  if(!isActive && now>fundingPeriod){
     mapCustomers[msg.sender].isValid=false;
     if(!msg.sender.send(premium)){
       mapCustomers[msg.sender].isValid=true;
@@ -167,7 +171,7 @@ function propose(bytes32 description,uint amountService)public payable{
 }
   //mapReimbursements[msg.sender] += deposit;
   mapProposals[msg.sender]=numberOfProposal;
-  arrProposals.push(Proposal({yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 45 days}));
+  arrProposals.push(Proposal({isValid:true,yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 7 days}));
   numberOfProposal++;
 //Deposit should be implemented
 }
@@ -184,7 +188,21 @@ function requestServe() public{
       }
 
   }
+
 }
+
+
+function reimburseDeposit()public{
+
+  uint index = mapProposals[msg.sender];
+  Proposal p= arrProposals[index];
+  if(p.isValid && p.voteEnd<now){
+    mapReimbursements[msg.sender]+=deposit;
+    p.isValid=false;
+  }
+
+}
+
 
 
 function startServe(address hospitalAdress){
@@ -193,6 +211,12 @@ function startServe(address hospitalAdress){
   bytes32[] memory tem;
   mapHospitals[hospitalAdress]=Hospital({amountOfService: p.amountOfService,proposalLink:p.link,invoices: tem});
   hospitalCount++;
+  if(!isActive && now<fundingPeriod){
+    if(hospitalCount>=requiredHospital && customerCount>=requiredCustomer){
+      isActive=true;
+
+    }
+  }
 }
 
 
@@ -244,7 +268,7 @@ function transferVote(address to)public{
 }
 function showVotes()public returns(uint){
   if(!mapCustomers[msg.sender].isValid){
-    return 31;
+    return 0;
   }
   return mapCustomers[msg.sender].weight;
 }
@@ -255,9 +279,18 @@ function showHosV()public returns(uint){
 }
 
 function requestPayment(address patient_Adress, bytes32 tDescription,uint tCost) public returns(uint){
+  if(!isActive && now<fundingPeriod){
+    if(hospitalCount>=requiredHospital && customerCount>=requiredCustomer){
+      isActive=true;
+
+    }
+  }
+  if(isActive){
     treatments.push(Treatment({isPaid:false,hospitalAdress:msg.sender,customerAdress:patient_Adress,cost:tCost,date:now,description:tDescription}));
     treatmentCount++;
     return treatmentCount-1;
+  }
+  return 0;
 }
 
 
@@ -291,5 +324,7 @@ function reimburseDev(){
 function showActive() public returns (bool){
   return isActive;
 }
-
+function isDead()public returns (bool){
+  return (!isActive && now>fundingPeriod);
+}
 }
