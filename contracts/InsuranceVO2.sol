@@ -19,6 +19,10 @@ uint public customerThreshold;
 uint public votePercentLimit;
 uint public votePercentAccept;
 uint public customerCount;
+uint public systemStart;
+bool public isActive;
+uint public hospitalCount;
+uint public treatmentCount;
 /*
 Structure for customer. It holds premium duration, validity, total votes and eligibility
 for voting.
@@ -30,22 +34,28 @@ struct Customer{
   bool isValid;
 }
 //Holds all mapCustomers.
-
-
+struct Treatment{
+  address hospitalAdress;
+  address customerAdress;
+  uint cost;
+  uint date;
+  bytes32 description;
+  bool isPaid;
+}
+Treatment[] public treatments;
 struct Hospital{
 
   uint amountOfService;
-  uint endPeriod;
   bytes32[] invoices;
-  bytes32[] proposalLink;
+  bytes32 proposalLink;
+
 }
 
 struct Proposal{
-  bytes32[] link;
+  bytes32 link;
   uint voteCount;
   uint proposalID;
   uint amountOfService;
-  uint durationOfService;
   uint voteEnd;
   uint yesVotes;
 }
@@ -60,6 +70,10 @@ function InsuranceVO(){
   votePercentLimit = 35;
   customerThreshold=1000;
   customerCount=0;
+  systemStart=now+10 days;// Editlenecek.
+  isActive=false;
+  hospitalCount=0;
+  treatmentCount=0;
 }
 
 function checkThreshold(){
@@ -67,7 +81,15 @@ function checkThreshold(){
   votePercentLimit=25;
   }
 }
+function (){
+  if(!isActive){
+    if(hospitalCount>=1 && customerCount>=2){
+      isActive=true;
 
+    }
+  }
+
+}
 // Pays premium values.
 function payPremium() public payable{
 
@@ -85,9 +107,11 @@ if((mapCustomers[msg.sender]).isValid){
     mapReimbursements[msg.sender]=msg.value-premium;
     }
 }else{
-
-//Creates a new candidate customer for insurance.
-  mapCustomers[msg.sender]=Customer({endPremium:now+365 days,isValid:true,weight:1});
+  if(systemStart>now){
+    mapCustomers[msg.sender]=Customer({endPremium:systemStart+365 days,isValid:true,weight:1});
+  }else{
+    mapCustomers[msg.sender]=Customer({endPremium:now+365 days,isValid:true,weight:1});
+}
   customerCount++;
   mapReimbursements[msg.sender]=msg.value-premium;
 
@@ -107,6 +131,23 @@ function reimburseMe() public {
   }
 }
 
+function reimbursePremium() public{
+  if(!mapCustomers[msg.sender].isValid){
+    throw;
+  }
+  if(!isActive && now>systemStart){
+    mapCustomers[msg.sender].isValid=false;
+    if(!msg.sender.send(premium)){
+      mapCustomers[msg.sender].isValid=true;
+    }
+
+  }
+
+
+}
+
+
+
 //Repays the customer if paid more.
 /*
 @return: reimbursed amount of customer.
@@ -120,13 +161,13 @@ Offer function for hospitals.
 @Param: description of proposal.
 @Param: duration of insurance service offered by hospital.
 */
-function propose(bytes32[] description,uint amountService,uint serviceDuration)public payable{
+function propose(bytes32 description,uint amountService)public payable{
   if(msg.value<deposit){
     throw;
 }
-  mapReimbursements[msg.sender] += deposit;
+  //mapReimbursements[msg.sender] += deposit;
   mapProposals[msg.sender]=numberOfProposal;
-  arrProposals.push(Proposal({durationOfService:serviceDuration, yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 45 days}));
+  arrProposals.push(Proposal({yesVotes:0,link:description,proposalID:numberOfProposal,voteCount:0,amountOfService:amountService,voteEnd:now + 45 days}));
   numberOfProposal++;
 //Deposit should be implemented
 }
@@ -136,20 +177,24 @@ function requestServe() public{
 //Yeni hospital olştur adresle maple vs.
  uint index = mapProposals[msg.sender];
  Proposal p= arrProposals[index];
-  if(p.voteEnd< now){
+
     if (p.voteCount > (customerCount*votePercentLimit)/100) {
       if (p.yesVotes > (p.voteCount*votePercentAccept)/100) {
-       // startServe(msg.sender , p);
+        startServe(msg.sender);
       }
-    }
+
   }
 }
 
 
-/*function startServe(address hospitalAdress, Proposal p){
-  mapHospitals[hospitalAdress]=Customer({endPeriod:(now+p.durationOfService),amountOfService: p.amountService,proposalLink:p.link});
+function startServe(address hospitalAdress){
+  uint index = mapProposals[msg.sender];
+  Proposal p= arrProposals[index];
+  bytes32[] memory tem;
+  mapHospitals[hospitalAdress]=Hospital({amountOfService: p.amountOfService,proposalLink:p.link,invoices: tem});
+  hospitalCount++;
 }
-*/
+
 
 
 //Bu kısımda düzeltilmesi gerekenler:
@@ -165,9 +210,7 @@ function customerVote(uint proposalID, bool choice) public{
   if(c.weight==0){
     throw;
   }
-  if((arrProposals[proposalID]).voteEnd<now){
-    throw;
-  }
+
   if(c.mapHospitalVotes[proposalID]){
     throw;
   }
@@ -205,6 +248,48 @@ function showVotes()public returns(uint){
   }
   return mapCustomers[msg.sender].weight;
 }
+function showHosV()public returns(uint){
+     uint index = mapProposals[msg.sender];
+    Proposal p= arrProposals[index];
+    return p.yesVotes;
+}
 
+function requestPayment(address patient_Adress, bytes32 tDescription,uint tCost) public returns(uint){
+    treatments.push(Treatment({isPaid:false,hospitalAdress:msg.sender,customerAdress:patient_Adress,cost:tCost,date:now,description:tDescription}));
+    treatmentCount++;
+    return treatmentCount-1;
+}
+
+
+function approvePayment(uint tCount) public{
+
+    if(treatments[tCount].isPaid){
+      throw;
+    }
+    if(msg.sender!=treatments[tCount].customerAdress){
+      throw;
+    }
+
+    if(treatments[tCount].hospitalAdress.send(treatments[tCount].cost)){
+      if(mapHospitals[treatments[tCount].hospitalAdress].amountOfService<treatments[tCount].cost){
+        delete mapHospitals[treatments[tCount].hospitalAdress];
+      }else{
+      mapHospitals[treatments[tCount].hospitalAdress].amountOfService-=treatments[tCount].cost;
+      treatments[tCount].isPaid=true;
+    }
+
+    }
+
+}
+
+function reimburseDev(){
+
+  uint amnt=this.balance;
+  msg.sender.send(amnt);
+}
+
+function showActive() public returns (bool){
+  return isActive;
+}
 
 }
