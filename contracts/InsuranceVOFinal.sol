@@ -315,11 +315,7 @@ function approvePayment(uint tCount) public{
 
 }
 
-function reimburseDev(){
 
-  uint amnt=this.balance;
-  msg.sender.send(amnt);
-}
 
 function showActive() public returns (bool){
   return isActive;
